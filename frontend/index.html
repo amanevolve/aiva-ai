@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aiva AI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #181825;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #313244;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #89b4fa;
+        }
+        .subtitle {
+            font-size: 0.8rem;
+            color: #a6adc8;
+            margin-top: 5px;
+        }
+        #chat-box {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .message {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+        .user-message {
+            background-color: #89b4fa;
+            color: #11111b;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .aiva-message {
+            background-color: #313244;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        .input-area {
+            display: flex;
+            padding: 20px;
+            background-color: #181825;
+            border-top: 1px solid #313244;
+        }
+        input {
+            flex-grow: 1;
+            padding: 15px;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            font-size: 1rem;
+            outline: none;
+        }
+        input:focus {
+            border-color: #89b4fa;
+        }
+        button {
+            margin-left: 10px;
+            padding: 0 20px;
+            background-color: #89b4fa;
+            color: #11111b;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #74c7ec;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Aiva AI</h1>
+        <div class="subtitle">Self-hosted local AI • Engineered by Aman</div>
+    </header>
+
+    <div id="chat-box">
+        <div class="message aiva-message">Hello Aman! I am Aiva, your self-hosted AI. How can I help you today?</div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="Message Aiva..." onkeypress="handleEnter(event)">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+
+        function appendMessage(sender, text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message');
+            msgDiv.classList.add(sender === 'user' ? 'user-message' : 'aiva-message');
+            msgDiv.textContent = text;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            userInput.value = '';
+
+            // Add a temporary loading message
+            const loadingId = 'loading-' + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = loadingId;
+            loadingDiv.classList.add('message', 'aiva-message');
+            loadingDiv.textContent = 'Thinking...';
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                // Send to our Nginx proxy which routes to Python backend
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [{ role: "user", content: text }]
+                    })
+                });
+
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+
+                if (data.message && data.message.content) {
+                    appendMessage('aiva', data.message.content);
+                } else {
+                    appendMessage('aiva', "Error: Could not process response.");
+                }
+
+            } catch (error) {
+                document.getElementById(loadingId).remove();
+                appendMessage('aiva', "Connection error. Is the backend and Ollama running?");
+            }
+        }
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>

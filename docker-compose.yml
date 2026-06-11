@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # 1. The Nginx Web Server
+  aiva-frontend:
+    build: ./frontend
+    container_name: aiva-frontend
+    ports:
+      - "80:80"
+    networks:
+      - aiva-network
+    depends_on:
+      - aiva-backend
+    restart: unless-stopped
+
+  # 2. The Python Flask API
+  aiva-backend:
+    build: ./backend
+    container_name: aiva-backend
+    ports:
+      - "5000:5000"
+    networks:
+      - aiva-network
+    depends_on:
+      - aiva-ollama
+    restart: unless-stopped
+
+  # 3. The Local AI Model Engine
+  aiva-ollama:
+    image: ollama/ollama:latest
+    container_name: aiva-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - aiva-network
+    restart: unless-stopped
+
+# Define the isolated bridge network for secure communication
+networks:
+  aiva-network:
+    driver: bridge
+
+# Define permanent storage so we don't have to re-download the model every time
+volumes:
+
+  ollama-data:
